@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html>
+    <!-- http://www.html5rocks.com/en/tutorials/file/dndfiles/ -->
+    <style>
+    #drop_zone 
+    {
+	     border: 2px dashed #BBB;
+	     border-radius: 5px;
+	     padding: 25px;
+	     text-align: center;
+	     color: #BBB;
+	     
+	     font-size: 18px;
+	     font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif;
+	     line-height: 1.5;
+	}
+    
+    #list
+    {
+        list-style-type: none;
+        overflow: auto;
+        height: 110px;
+        white-space: nowrap;
+        overflow-y: hidden;
+    }
+    
+    #list li
+    {
+        display: inline-block; 
+    }
+	
+	.thumb 
+	{
+	     height: 75px;
+	     border: 1px solid #000;
+	     margin: 10px 5px 0px 0px;
+	}
+	
+    #canvases
+    {
+        /*position: relative;*/
+        display: inline-block; 
+    }
+    
+	#canvas
+	{
+	    border: 1px solid black;
+        /*position: absolute;
+        top: 0;
+        left: 0;*/
+	}
+    
+    /*#canvas_layer
+    {
+        background-color: rgba(255, 0, 0, 0.5);
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100px;
+        height: 100px
+    }*/
+    
+    .metadata_table 
+    {
+        /*position: relative;*/
+        border: 1px solid #000;
+        display: inline-block; 
+        vertical-align: top;
+    }
+    
+    .crop-wrapper
+    { 
+        display:block;  
+        overflow:hidden; 
+        position:relative; 
+    }
+    
+    .crop-wrapper img
+    {
+        position:absolute;
+    }
+    
+    /*td
+    {
+        text-align: center;
+    }*/
+    </style>
+
+	<body onload="start()">
+        <p style="float:right;"><img height=30px src="mmlab.gif" style="padding: 0px 20px" /><img height=30px src="iminds.png" style="padding: 0px 20px" /></p>
+        <p><a href="list.html">List of comics</a></p>
+        <button onclick="createEPUB()">EPUB3</button>
+        <p id="comicID">Comic ID:</p>
+        <!-- div id="load_">
+            <input type="text" id="load_text" size="5"/>
+            <input type="button" id="load_btn" value="Load comic" onclick="loadEPUB($('#load_text').val());" />
+        </div -->
+        <table>
+            <tr>
+                <td>ISBN:</td><td><input type="text" class="comic_metadata" id="meta_isbn" name="dc:identifier" onkeydown="typingCheck()"/></td>
+                <td>Title:</td><td><input type="text" class="comic_metadata" id="meta_title" name="dc:title" onkeydown="typingCheck()"/></td>
+                <td>Author:</td><td><input type="text" class="comic_metadata" id="meta_author" name="dc:creator" onkeydown="typingCheck()"/></td>
+                <td>Language:</td><td><input type="text" class="comic_metadata" id="meta_language" name="dc:language" onkeydown="typingCheck()" value="nl"/></td>
+            </tr>
+        </table>
+        <table>
+            <tr>
+                <td>Description:</td><td><textarea class="comic_metadata" id="meta_description" name="dc:description" style="width: 600px; height: 100px;" onkeydown="typingCheck()"></textarea></td>
+            </tr>
+            <tr>
+                <td><input type="button" value="Enrich" onclick="enrich();"/></td>
+            </tr>
+        </table>
+        <table>
+            <tr>
+                <td>Key</td>
+                <td>Value</td>
+            </tr>
+            <tr id="add_custom_metadata">
+                <td><input type="text" id="meta_key" /></td>
+                <td><input type="text" id="meta_value" /></td>
+                <td><input type="button" value="Add" onclick="addComicMetadata(); " /></td>
+            </tr>
+        </table>
+		<div id="drop_zone">
+			Drop files here
+			<ul id="list"></ul>
+		</div>
+		<br />
+        <div style="text-align: center;">
+            <input type="button" value="Panels" onclick="$('.toggle').not('#canvases').hide(); $('#canvases').show();"/>
+            <input type="button" value="Metadata Lists" onclick="$('.toggle').not('#metadata_lists').hide(); $('#metadata_lists').show(); renderMetadataLists();"/>
+            <input type="button" value="Metadata" onclick="$('.toggle').not('#panels_metadata').hide(); $('#panels_metadata').show(); renderPanelsWithMetadata();"/>
+            <!-- input type="button" value="Actions" onclick="$('.toggle').not('#actions').hide(); $('#actions').show(); renderPanelsWithActions();"/ -->
+        </div>
+        <div id="canvases" class="toggle"> <!-- onclick="addTagToPanel()" -->
+            <canvas id="canvas" width=1 height=1>
+                This text is displayed if your browser does not support HTML5 Canvas.
+            </canvas>
+            <!-- div id="canvas_layer"></div-->
+        </div>
+        <div id="metadata_lists" class="toggle" hidden="hidden">
+            <table id="tags" class="metadata_table"></table>
+            <table id="languages" class="metadata_table"></table>
+            <table id="predicates" class="metadata_table"></table>
+        </div>
+        <div id="panels_metadata" class="toggle" hidden="hidden">
+            <table id="panels">
+            </table>
+        </div>
+        <!-- div id="actions" class="toggle" hidden="hidden">
+            <table id="panels_actions">
+            </table>
+        </div -->
+	</body>
+    
+    <script src="jquery-2.1.0.min.js"></script>
+    <script src="jquery-ui.min.js"></script>
+    <script src="jquery.ui.sortable.js"></script>
+    <script src="jquery.tinysort.min.js"></script>
+    <script src="shapes.js"></script>
+    <script src="comic.js"></script>
+    <script>
+	    var canvasState;
+	    var selected;
+	    var comic;
+	    var timer;
+	    
+	    function start ()
+	    {
+	        canvasState = new CanvasState(document.getElementById('canvas'));
+	        selected = null;
+	        
+	        // Setup the dnd listeners.
+	        var dropZone = document.getElementById('drop_zone');
+	        dropZone.addEventListener('dragover', handleDragOver, false);
+	        dropZone.addEventListener('drop', handleFileSelect, false);
+	        
+	        // keyboard listener
+	        // problem: also triggers when typing in text fields
+	        //document.onkeydown = keyPress;
+	        
+	        comicID = null;
+	        
+	        var params = getURLParameters('comic');
+	        if (params.length > 0)
+            {
+	            loadEPUB(params[0]);
+            }
+	    }
+	    
+	    function typingCheck ()
+	    {
+	        clearTimeout(timer);
+	        timer = setTimeout(updateComicMetadata, 3000); 
+	    }
+	    
+	    function updateComicMetadata ()
+	    {
+            if (comic)
+            {
+    	        $('.comic_metadata').each(function (index)
+                {
+    	            comic.setMetadata($(this).attr('name'), $(this).val());
+                });
+            }
+	    }
+	    
+	    function enrich ()
+	    {
+	        var text = $("#meta_description").val();
+	        Metadata.enrich(text, function(tags)
+            {
+	            tags = jQuery.parseJSON(tags);
+	            if (tags.length <= 0)
+	                return;
+	            for (var i = 0; i < tags.length; ++i)
+	                comic.addMetadata("schema:about", tags[i]);
+	            updateComicMetadataTable();
+            });
+	    }
+	    
+	    /*function keyPress (event)
+	    {
+	        var right;
+	        if (event.keyCode == '37')
+	            right = false;
+	        else if (event.keyCode == '39')
+	            right = true;
+	        else
+	            return;
+	        
+	        var next = null;
+	        if (selected != null)
+            {
+	            if (right)
+	                next = selected.next();
+	            else
+	                next = selected.prev();
+            }
+            
+            if (selected == null || next.length <= 0)
+            {
+                var entries = $('#list > li.entry');
+                if (entries.length <= 0)
+                    return;
+                
+                if (right)
+                    next = entries.first();
+                else
+                    next = entries.last();
+            }
+            
+            if (next != null)
+                changeSelection(next);
+	    }*/
+	    
+	    function loadFile (files, idx)
+	    {
+	    	var f = files[idx];
+            if (!f.type.match('image.*'))
+            {
+            }
+            var reader = new FileReader();
+            
+            reader.onload = (function(file)
+            {
+                return function(e)
+                {
+                	if (file.type.match('image.*'))
+               		{
+                	    if (!comic)
+            	        {
+                            // create comic entry in database
+                            comic = new Comic();
+                            console.log("New comic ID: " + comic.id);
+                            $('#comicID').text("Comic ID: " + comic.id);
+                            updateComicMetadata();
+            	        }
+                	    
+                	    var page = comic.addPageByImg(new Uint8Array(e.target.result));
+                        console.log("New page ID: " + page.id);
+                        console.log("New img ID: " + page.imgID);
+
+                        addEntry(page, escape(file.name));
+               		}
+
+                    if (idx < files.length-1)
+                   	{
+                        loadFile(files, idx+1)
+                   	}
+                    else
+                    {
+                        finalizePage();
+                    }
+                }
+            })(f);
+            //reader.readAsDataURL(f);
+            reader.readAsArrayBuffer(f);
+	    }
+	    
+	    function addEntry (page, title)
+	    {
+	        var list = $('#list');
+	        var entry = $('<li />', {'class': 'entry needsort', title: page.id});
+	        var img = $('<img />', {'class': 'thumb', src: page.getImgURL(), title: title});
+	        list.append(entry.append(img));
+
+            // http://stackoverflow.com/questions/20167913/css-onclick-for-multiple-elements
+            // $('entry').unbind('click'); // clear onclicks before adding new ones
+            entry.click(function(event)
+            {
+                if (!$(this).is(selected))
+                    changeSelection($(this));
+            });
+            entry.dblclick(function(event)
+            {
+                if (event.altKey)
+                {
+                    comic.deletePage($(this).index());
+                    $(this).detach();
+                    changeSelection(null);
+                }
+            });
+            
+            return $(entry);
+	    }
+	    
+	    function finalizePage ()
+	    {
+            // http://jqueryui.com/sortable/
+            $('#list').sortable(
+                {
+                    cursorAt: { top: 0, left: 0 },
+                    start: function(event, ui) {
+                        var start_pos = ui.item.index();
+                        ui.item.data('start_pos', start_pos);
+                    },
+                    update: function(event, ui) 
+                    {
+                        var oldPos = ui.item.data('start_pos');
+                        var newPos = ui.item.index();
+                        ui.item.removeData('start_pos');
+                        comic.movePage(oldPos, newPos);
+                    }
+                } 
+            );
+            $('#list').disableSelection();
+            // http://tinysort.sjeiti.com/
+            // TODO: copy changes to database
+            $('li.needsort').tsort('img.thumb', { attr: 'title', order: 'asc' });
+            var ids = $('#list > li').map(function() {return parseInt($(this).attr("title")); }).toArray();
+            if (ids.length > 1)
+                comic.setPagesByIDs(ids);
+            $('li.needsort').removeClass('needsort');
+	    }
+	    
+	    function addComicMetadata ()
+	    {
+	        if (comic == null)
+	            comic = new Comic();
+	        
+	        var key = $("#meta_key").val();
+	        var value = $("#meta_value").val();
+	        comic.addMetadata(key, value);
+	        
+	        $("#meta_key").val("");
+	        $("#meta_value").val("");
+	        
+	        updateComicMetadataTable();
+	    }
+	    
+	    function updateComicMetadataTable ()
+	    {
+            $(".custom_metadata").remove();
+            
+            var final_row = $("#add_custom_metadata");
+            
+	        var fixed = ["dc:identifier", "dc:title", "dc:creator", "dc:language", "dc:description", "dcterms:modified"]
+	        for (var key in comic.metadata)
+            {
+	            if (fixed.indexOf(key) >= 0)
+	                continue;
+	            
+	            for (var i = 0; i < comic.metadata[key].length; ++i)
+	            {
+	                var val = comic.metadata[key][i];
+    	            var row = $("<tr />", {'class':'custom_metadata'});
+    	            row.append($("<td />").append(key));
+                    row.append($("<td />").append(val));
+                    row.append($("<td />").append($("<input />", {type:"button", value:"X", onclick:'comic.deleteMetadata("' + addslashes(key) + '", "' + addslashes(val) + '"); updateComicMetadataTable();'})));
+                    row.insertBefore(final_row);
+	            }
+            }
+	    }
+	    
+	    function changeSelection (li)
+	    {
+            // store changes before changing selection
+            /*if (selected != null)
+            {
+                var rects = [];
+                var meta = [];
+                var page = comic.pages[selected.index()];
+                for (var i = 0; i < canvasState.shapes.length; ++i)
+                {
+                    var shape = canvasState.shapes[i];
+                    page.panels[i].resize(shape.x, shape.y, shape.w, shape.h);
+                }
+    	    }*/
+            
+            if (li == null)
+            {
+                selected = null;
+                canvas.width = 1;
+                canvas.height = 1;
+                canvas.style.backgroundImage = '';
+                canvasState.page = null;
+                return;
+            }
+            else if (li.is(selected))
+            {
+                return;
+            }
+            
+            var img = new Image();
+            img.src = li[0].firstChild.src;
+            $(img).load(function () 
+            {
+                // wait for image to load before setting size
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvasState.valid = false;
+                
+                renderPanelsWithMetadata(); // need to wait until image data is loaded so images can be scaled correctly
+                //renderPanelsWithActions();
+            });
+            // http://stackoverflow.com/questions/6669228/setting-backgroundimage-style-from-a-filereader
+            canvas.style.backgroundImage = 'url(' + img.src + ')';
+
+            if (selected != null)
+            {
+                selected.children().first().css('border-color', 'rgb(0, 0, 0)');
+                selected.children().first().css('border-width', '1px');
+            }
+            selected = li; // do this here so border of previous can be reset
+            selected.children().first().css('border-color', 'rgb(255, 0, 0)');
+            selected.children().first().css('border-width', '2px');
+            
+            var page = comic.pages[selected.index()];
+            canvasState.page = page;
+            if (page.panels.length == 0)
+           	{
+                page.generateRects();
+           	}
+            rectsToCanvas(page.panels);
+            for (var i = 0; i < canvasState.shapes.length; ++i)
+            {
+                canvasState.shapes[i].metadata = page.panels[i].metadata;
+            }
+	    }
+	    
+	    function uriName(uri)
+	    {
+	        var arr = uri.split("/");
+	        return arr[arr.length-1].replace("_", " ");
+	    }
+	    
+	    function renderMetadataLists()
+	    {
+            var vals = Metadata.getMetadata();
+            updateMetadatListTable(vals, 'tags', 'tags', 'Tags', 'createTag', 'deleteTag');
+            
+            vals = Metadata.getLanguages();
+            updateMetadatListTable(vals, 'languages', 'languages', 'Languages', 'createLanguage', 'deleteLanguage');
+            
+            vals = Metadata.getPredicates();
+            updateMetadatListTable(vals, 'predicates', 'predicates', 'Types', 'createPredicate', 'deletePredicate');
+	    }
+	    
+	    function renderPanels(root, row_class_name)
+	    {
+            if (selected === null)
+                return;
+            
+            // TODO: how to add stuff to rows
+            var page = comic.pages[selected.index()];
+            root.empty();
+            for (var i = 0; i < page.panels.length; ++i)
+            {
+                var panel = page.panels[i];
+                var rect = panel.rect;
+                var row = $('<tr />', {'class': row_class_name});
+                var width = canvas.width;
+                var height = canvas.height;
+                // TODO: fix problem with smaller images
+                if (rect.width > rect.height)
+                {
+                    var mod = rect.width/300;
+                    var div = $("<div />", {'class': 'crop-wrapper', style: ['width:300px; height:', 300*rect.height/rect.width, 'px;'].join('')});
+                    div.append($("<img />", {src: page.getImgURL(), style: ['width:', width/(rect.width/300), 'px; left:-', rect.x/mod, 'px; top:-', rect.y/mod, 'px;'].join('')}));
+                }
+                else
+                {
+                    var mod = rect.height/300;
+                    var div = $("<div />", {'class': 'crop-wrapper', style: ['margin-left: auto; height:300px; width:', 300*rect.width/rect.height, 'px;'].join('')});
+                    div.append($("<img />", {src: page.getImgURL(), style: ['height:', height/(rect.height/300), 'px; left:-', rect.x/mod, 'px; top:-', rect.y/mod, 'px;'].join('')}));
+                }
+                row.append($('<td />', {style: 'width:300px; height: 300px;'}).append(div));
+                
+                root.append(row);
+            }
+	    }
+	    
+	    function renderPanelMetadataOptions(rows)
+	    {
+            var page = comic.pages[selected.index()];
+	        for (var i = 0; i < page.panels.length; ++i)
+            {
+                var row = $(rows[i]);
+                var panel = page.panels[i];
+                
+                // metadata selection table
+                var tags = Metadata.getMetadata();
+                var tagTable = $("<table />");
+                var tagRows = [];
+                for (var j = 0; j < 10; ++j)
+                {
+                    var tagRow = $('<tr />');
+                    tagRows.push(tagRow);
+                    tagTable.append(tagRow);
+                }
+                for (var j = 0; j < tags.length; ++j)
+                {
+                    var tag = tags[j];
+                    var check = $("<input />", {
+                        type: 'checkbox', 
+                        name: 'meta_'+page.panels[i].id, 
+                        value: tag, 
+                        checked: panel.metadata.indexOf(tag) >= 0,
+                        onclick: '$(this).is(":checked") ? addPanelTag(' + i + ', "' + addslashes(tag) + '") : deletePanelTag(' + i + ', "' + addslashes(tag) + '");'
+                        });
+                    tagRows[Math.floor(j%10)].append($('<td />').append($('<label style="clear:left; float:left;" />').append(check).append(uriName(tag))));
+                }
+                for (var j = 0; j < panel.metadata.length; ++j)
+                {
+                    var tag = panel.metadata[j];
+                    if (tags.indexOf(tag) < 0)
+                    {
+                        var check = $("<input />", {
+                            type: 'checkbox', 
+                            name: 'meta_'+page.panels[i].id, 
+                            value: tag, 
+                            checked: panel.metadata.indexOf(tag) >= 0,
+                            onclick: '$(this).is(":checked") ? addPanelTag(' + i + ', "' + addslashes(tag) + '") : deletePanelTag(' + i + ', "' + addslashes(tag) + '");'
+                            });
+                        tagRows[Math.floor((j+tags.length)%10)].append($('<td />').append($('<label style="clear:left; float:left; color:red;" />').append(check).append(uriName(tag))));
+                    }
+                }
+                row.append($('<td />').append(tagTable));
+            }
+	    }
+	    
+	    function renderPanelTextOptions(rows)
+	    {
+            var page = comic.pages[selected.index()];
+            var langs = Metadata.getLanguages();
+            langs.unshift('');
+            var types = Metadata.getPredicates();
+            for (var i = 0; i < page.panels.length; ++i)
+            {
+                var row = $(rows[i]);
+                var panel = page.panels[i];
+                
+                var textTable = $("<table />");
+                panel.texts.forEach(function (textObj, idx) {
+                    var textRow = $('<tr />');
+                    textRow.append($('<td />').append($('<input/>', {type: 'button', value:'X', onClick:'deletePanelText(' + i +  ', ' + idx + ')'})));
+                    textRow.append($('<td />').append(textObj.lang && textObj.lang.length > 0 ? '(' + textObj.lang + ')' : ''));
+                    textRow.append($('<td />').append('(' + textObj.predicate + ')'));
+                    textRow.append($('<td />').append(textObj.text));
+                    textTable.append(textRow);
+                });
+                
+                var textRow = $('<tr />');
+                textRow.append($('<td />').append($('<input/>', {type: 'button', value:'Add', onClick:'addPanelText(' + i + ')'})));
+                var langSelect = $('<select/>', {id: 'text_lang_'+i});
+                langs.forEach(function (lang) {
+                    langSelect.append($('<option>' + lang + '</option>', {value: lang}));
+                });
+                textRow.append($('<td />').append(langSelect));
+                var typeSelect = $('<select/>', {id: 'text_type_'+i});
+                types.forEach(function (type) {
+                    typeSelect.append($('<option>' + type + '</option>', {value: type}));
+                });
+                textRow.append($('<td />').append(typeSelect));
+                textRow.append($('<td />').append($('<input/>', {type: 'text', id: 'text_'+i, value:'Text'}).attr('size', '80')));
+                textTable.append(textRow);
+                row.append($('<td />').append(textTable));
+            }
+	    }
+	    
+	    function renderPanelsWithMetadata()
+	    {
+	        if (selected === null)
+                return;
+            
+            //updateTagTable();
+            
+            // TODO: only update necessary parts when needed
+            var page = comic.pages[selected.index()];
+            var root = $("#panels");
+            var name = "panels_metadata_row";
+            renderPanels(root, name);
+            var rows = $("tr."+name).toArray();
+            renderPanelMetadataOptions(rows);
+            renderPanelTextOptions(rows);
+	    }
+        /*
+        function renderPanelActionOptions(rows)
+        {
+            var page = comic.pages[selected.index()];
+            for (var i = 0; i < page.panels.length; ++i)
+            {
+                var row = $(rows[i]);
+                var panel = page.panels[i];
+                
+                // translations
+                var actionTable = $("<table />");
+                for (var j = 0; j < panel.actions.length; ++j)
+                {
+                    var action = panel.actions[j];
+                    var actionRow = $('<tr />');
+                    actionRow.append($('<td />').append($('<input/>', {type: 'button', value:'X', onClick:'deletePanelAction(' + i +  ', "' + addslashes(action) + '")'})));
+                    actionRow.append($('<td />').append(action));
+                    actionTable.append(actionRow);
+                }
+                var actionRow = $('<tr />');
+                actionRow.append($('<td />').append($('<input/>', {type: 'button', value:'Add', onClick:'addPanelAction(' + i + ')'})));
+                actionRow.append($('<td />').append($('<input/>', {type: 'text', id: 'action_'+i, value:'Action'}).attr('size', '80')));
+                actionTable.append(actionRow);
+                row.append($('<td />').append(actionTable));
+            }
+        }
+	    
+	    function renderPanelsWithActions()
+	    {
+            if (selected === null)
+                return;
+            
+            // TODO: only update necessary parts when needed
+            var page = comic.pages[selected.index()];
+            var root = $("#panels_actions");
+            var name = "panels_actions_row";
+            renderPanels(root, name);
+            var rows = $("tr."+name).toArray();
+            renderPanelActionOptions(rows);
+	    }*/
+	    
+	    function addPanelTag(pos, tag)
+	    {
+            var page = comic.pages[selected.index()];
+            page.panels[pos].addMetadata(tag);
+	    }
+	    
+	    function deletePanelTag(pos, tag)
+	    {
+            var page = comic.pages[selected.index()];
+            page.panels[pos].deleteMetadata(tag);
+	    }
+	    
+	    function addPanelText(pos)
+	    {
+            var page = comic.pages[selected.index()];
+	        page.panels[pos].addText($('#text_lang_' + pos).val(), $('#text_type_' + pos).val(), $('#text_' + pos).val());
+	        renderPanelsWithMetadata();
+	    }
+	    
+	    function deletePanelText(pos, idx)
+	    {
+            var page = comic.pages[selected.index()];
+            page.panels[pos].deleteText(idx);
+            renderPanelsWithMetadata();
+	    }
+        /*
+        function addPanelAction(pos)
+        {
+            var page = comic.pages[selected.index()];
+            page.panels[pos].addAction($('#action_' + pos).val());
+            renderPanelsWithActions();
+        }
+        
+        function deletePanelAction(pos, action)
+        {
+            var page = comic.pages[selected.index()];
+            page.panels[pos].deleteAction(action);
+            renderPanelsWithActions();
+        }*/
+	    
+	    function rectsToCanvas(panels)
+	    {
+            canvasState.clearShapes();
+            for (var i = 0; i < panels.length; ++i)
+            {
+                canvasState.addShape(new Shape(panels[i].rect.x, panels[i].rect.y, panels[i].rect.width, panels[i].rect.height, panels[i].id));
+            }
+	    }
+	    
+	    function createTag(tag)
+	    {
+	        if (tag === '')
+	            return;
+	        Metadata.createMetadata(tag);
+	        renderMetadataLists();
+	    }
+        
+        function deleteTag(tag)
+        {
+            if (tag === '')
+                return;
+            Metadata.deleteMetadata(tag);
+            renderMetadataLists();
+        }
+        
+        function createLanguage(lang)
+        {
+            if (lang === '')
+                return;
+            Metadata.createLanguage(lang);
+            renderMetadataLists();
+        }
+        
+        function deleteLanguage(lang)
+        {
+            if (lang === '')
+                return;
+            Metadata.deleteLanguage(lang);
+            renderMetadataLists();
+        }
+        
+        function createPredicate(predicate)
+        {
+            if (predicate === '')
+                return;
+            Metadata.createPredicate(predicate);
+            renderMetadataLists();
+        }
+        
+        function deletePredicate(predicate)
+        {
+            if (predicate === '')
+                return;
+            Metadata.deletePredicate(predicate);
+            renderMetadataLists();
+        }
+	    
+        function updateMetadatListTable(vals, tableID, name, title, createFnName, deleteFnName)
+        {
+            $('#' + tableID + ' caption').detach();
+            $('#' + tableID + ' tr').detach(); // clean table
+            
+            $('#' + tableID).append($('<caption style="font-weight: bold;">' + title + '</caption>'))
+            
+            vals.sort();
+            
+            var inputID = name + '_input';
+            
+            for (var i = 0; i < vals.length; ++i)
+            {
+                var tr = $("<tr />");
+                var cpyBtn = $("<input />", {type: 'button', value: 'X', onClick: 'if (confirm("Are you sure?")) ' + deleteFnName + '("' + vals[i] + '");'});
+                
+                tr.append($("<td />").append(cpyBtn));
+                tr.append($("<td />").append(vals[i]));
+                
+                $('#' + tableID).append(tr);
+            }
+            
+            var tr = $("<tr />");
+            var btn = $("<input />", {type: 'button', value: 'Add', onClick: createFnName + '($("#' + inputID + '").val());'});
+            var txt = $("<input />", {type: 'text', id: inputID, style: 'width: 95%;'});
+            
+            tr.append($("<td />").append(btn));
+            tr.append($("<td />").append(txt));
+            
+            $('#' + tableID).append(tr);
+        }
+    
+	    function handleFileSelect(evt) 
+	    {
+	 	  evt.stopPropagation();
+	      evt.preventDefault();
+	  
+	      var files = evt.dataTransfer.files; // FileList object.
+	  
+	      // files is a FileList of File objects. List some properties.
+	      var output = [];
+	      // load files one by one
+	      loadFile(files, 0);
+	    }
+	  
+	    function handleDragOver(evt) 
+	    {
+	      evt.stopPropagation();
+	      evt.preventDefault();
+	      evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
+	    }
+        
+        function createEPUB ()
+        {
+            changeSelection(selected); // forces current page to be stored in database            
+
+            for(var i = 0; i < comic.pages.length; i++) 
+            {
+                var page = comic.pages[i];
+                if (page.panels.length == 0)
+                {
+                    alert('Not all pages have panels!');
+                    return false;
+                }
+            }
+            
+            updateComicMetadata();
+            
+            if (!('dc:title' in comic.metadata) || comic.metadata['dc:title'].length == 0)
+            {
+                alert('Title is empty!');
+                return false;
+            }
+            if (!('dc:identifier' in comic.metadata) || comic.metadata['dc:identifier'].length == 0)
+            {
+                alert('ISBN is empty!');
+                return false;
+            }
+            if (!('dc:language' in comic.metadata) || comic.metadata['dc:language'].length == 0)
+            {
+                alert('Language is empty!');
+                return false;
+            }
+            
+            window.location.href = comic.getEPUBURL();
+        }
+        
+        function loadEPUB (id)
+        {
+            try
+            {
+                comic = new Comic(id);
+                changeSelection(null);
+                $('#list').empty();
+                for (var i = 0; i < comic.pages.length; ++i)
+                {
+                    addEntry(comic.pages[i]);
+                }
+                $('#comicID').text("Comic ID: " + comic.id);
+                $('.comic_metadata').each(function(index)
+                {
+                    var val = comic.metadata[$(this).attr("name")];
+                    if (val)
+                        $(this).val(val);
+                });
+                
+                finalizePage();
+                updateComicMetadataTable();
+            }
+            catch (err)
+            {
+                if (err.message.indexOf("404") >= 0)
+                    alert("Invalid comic ID");
+                else
+                    throw err;
+            }
+        }
+        
+        function getURLParameters(name) 
+        {
+            var results = [];
+            var regexp = new RegExp('[?|&]' + name + '=' + '([^&;]+?)', 'g');
+            var match;
+            while (match = regexp.exec(location.search))
+            {
+                results.push(decodeURIComponent(match[1].replace(/\+/g, '%20')));
+            }
+            return results;
+        }
+        
+        function addslashes( str ) {
+            return (str + '').replace(/[\\"']/g, '\\$&').replace(/\u0000/g, '\\0');
+        }
+    </script>
+</html>

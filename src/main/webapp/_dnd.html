@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html>
+    <!-- http://www.html5rocks.com/en/tutorials/file/dndfiles/ -->
+    <style>
+    #drop_zone 
+    {
+	     border: 2px dashed #BBB;
+	     border-radius: 5px;
+	     padding: 25px;
+	     text-align: center;
+	     color: #BBB;
+	     
+	     font-size: 18px;
+	     font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif;
+	     line-height: 1.5;
+	}
+    
+    #list
+    {
+        list-style-type: none;
+    }
+    
+    #list li
+    {
+        display: inline-block; 
+    }
+	
+	.thumb 
+	{
+	     height: 75px;
+	     border: 1px solid #000;
+	     margin: 10px 5px 0px 0px;
+	}
+	
+    #canvases
+    {
+        /*position: relative;*/
+        display: inline-block; 
+    }
+    
+	#canvas
+	{
+	    border: 1px solid black;
+        /*position: absolute;
+        top: 0;
+        left: 0;*/
+	}
+    
+    /*#canvas_layer
+    {
+        background-color: rgba(255, 0, 0, 0.5);
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100px;
+        height: 100px
+    }*/
+    
+    #tags 
+    {
+        /*position: relative;*/
+        border: 1px solid #000;
+        display: inline-block; 
+        vertical-align: top;
+    }
+    
+    /*td
+    {
+        text-align: center;
+    }*/
+    </style>
+
+	<body onload="start()">
+        <button onclick="createEPUB()">EPUB3</button>
+        <p id="comicID">Comic ID:</p>
+        <div id="load_">
+            <input type="text" id="load_text" size="5"/>
+            <input type="button" id="load_btn" value="Load comic" onclick="loadEPUB($('#load_text').val());" />
+        </div>
+		<div id="drop_zone">
+			Drop files here
+			<ul id="list"></ul>
+		</div>
+		<br />
+        <div id="canvases" onclick="addTagToPanel()">
+            <canvas id="canvas" width=1 height=1>
+                This text is displayed if your browser does not support HTML5 Canvas.
+            </canvas>
+            <!-- div id="canvas_layer"></div-->
+        </div>
+        <table id="tags">
+        </table>
+	</body>
+    
+    <script src="shapes.js"></script>
+    <script src="jquery-2.1.0.min.js"></script>
+    <script src="jquery-ui.min.js"></script>
+    <script src="jquery.ui.sortable.js"></script>
+    <script src="jquery.tinysort.min.js"></script>
+    <script>
+	    var canvasState;
+	    var selected;
+	    var comicID;
+	    
+	    function start ()
+	    {
+	        canvasState = new CanvasState(document.getElementById('canvas'));
+	        selected = null;
+	        
+	        // Setup the dnd listeners.
+	        var dropZone = document.getElementById('drop_zone');
+	        dropZone.addEventListener('dragover', handleDragOver, false);
+	        dropZone.addEventListener('drop', handleFileSelect, false);
+	        
+	        // keyboard listener
+	        document.onkeydown = keyPress;
+	        
+	        comicID = -1;
+	    }
+	    
+	    function keyPress (event)
+	    {
+	        var right;
+	        if (event.keyCode == '37')
+	            right = false;
+	        else if (event.keyCode == '39')
+	            right = true;
+	        else
+	            return;
+	        
+	        var next = null;
+	        if (selected != null)
+            {
+	            if (right)
+	                next = selected.next();
+	            else
+	                next = selected.prev();
+            }
+            
+            if (selected == null || next.length <= 0)
+            {
+                var entries = $('#list > li.entry');
+                if (entries.length <= 0)
+                    return;
+                
+                if (right)
+                    next = entries.first();
+                else
+                    next = entries.last();
+            }
+            
+            if (next != null)
+                changeSelection(next);
+	    }
+	    
+	    function loadFile (files, idx)
+	    {
+	    	var f = files[idx];
+            if (!f.type.match('image.*'))
+            {
+            }
+            var reader = new FileReader();
+            
+            reader.onload = (function(file)
+            {
+                return function(e)
+                {
+                	if (file.type.match('image.*'))
+               		{
+                	    if (comicID < 0)
+            	        {
+                            // create comic entry in database
+                            var xmlHttp = new XMLHttpRequest();
+                            xmlHttp.open("POST", "http://localhost:8080/estrips/estrips/comic", false);
+                            xmlHttp.send(null);
+                            comicID = xmlHttp.responseText;
+                            console.log("New comic ID: " + comicID);
+                            $('#comicID').text("Comic ID: " + comicID);
+            	        }
+                	    
+                        var xmlHttp = new XMLHttpRequest();
+                        xmlHttp.open("POST", "http://localhost:8080/estrips/estrips/comic/" + comicID + "/page", false);
+                        xmlHttp.send(null);
+                        var page = xmlHttp.responseText;
+                        console.log("New page ID: " + page);
+                        
+                        xmlHttp = new XMLHttpRequest();
+                        xmlHttp.open("POST", "http://localhost:8080/estrips/estrips/comic/" + comicID + "/" + page + "/img", false);
+                        //xmlHttp.send(dataURItoBlob(e.target.result));
+                        xmlHttp.send(new Uint8Array(e.target.result));
+                        var img = xmlHttp.responseText;
+                        console.log("New img ID: " + img);
+
+                        addEntry(page, img, escape(file.name));
+               		}
+
+                    if (idx < files.length-1)
+                   	{
+                        loadFile(files, idx+1)
+                   	}
+                    else
+                    {
+                        finalizePage();
+                    }
+                }
+            })(f);
+            //reader.readAsDataURL(f);
+            reader.readAsArrayBuffer(f);
+	    }
+	    
+	    function addEntry (page, img, title)
+	    {
+            var list = document.getElementById('list');
+            var canvas = document.getElementById('canvas');
+            var entry = document.createElement('li');
+            entry.setAttribute('class', 'entry needsort');
+            entry.setAttribute('name', page);
+            entry.innerHTML = ['<img class ="thumb" src="http://localhost:8080/estrips/estrips/img/', img, '" title="', title, '"/>'].join('');
+            $(entry).data("id", page);
+            list.insertBefore(entry, null);
+
+            // http://stackoverflow.com/questions/20167913/css-onclick-for-multiple-elements
+            // $('entry').unbind('click'); // clear onclicks before adding new ones
+            $(entry).mousedown(function(event)
+            {
+                if (!$(this).is(selected))
+                    changeSelection($(this));
+            });
+            $(entry).dblclick(function(event)
+            {
+                if (event.altKey)
+                {
+                    $(this).detach();
+                    changeSelection(null);
+                }
+            });
+            
+            return $(entry);
+	    }
+	    
+	    function finalizePage ()
+	    {
+            // http://jqueryui.com/sortable/
+            $('#list').sortable(
+                {
+                    cursorAt: { top: 0, left: 0 },
+                    update: function(event, ui) 
+                    {   
+                        var newPos = ui.item.index();
+
+                        var xmlHttp = new XMLHttpRequest();
+                        xmlHttp.open("POST", "http://localhost:8080/estrips/estrips/comic/" + comicID + "/" + selected.attr('name') + "/position", false);
+                        xmlHttp.send(newPos + "");
+                    }
+                } 
+            );
+            $('#list').disableSelection();
+            // http://tinysort.sjeiti.com/
+            // TODO: copy changes to database
+            //$('li.needsort').tsort('img.thumb', { attr: 'title', order: 'asc' });
+            $('li.needsort').removeClass('needsort');
+	    }
+	    
+	    function changeSelection (li)
+	    {
+            // store changes before changing selection
+            if (selected != null)
+            {
+                var rects = [];
+                var meta = [];
+                for (var i = 0; i < canvasState.shapes.length; ++i)
+                {
+                    var shape = canvasState.shapes[i];
+                    rects.push({x : shape.x, y : shape.y, width : shape.w, height : shape.h});
+                    meta.push(shape.metadata);
+                }
+                selected.data("rects", rects);
+                selected.data("meta", meta);
+
+                $.each(rects, function(index, rect)
+                {
+                    sendRect (selected.attr('name'), index, rect);
+                });
+    	    }
+            
+            if (li == null)
+            {
+                selected = null;
+                canvas.width = 1;
+                canvas.height = 1;
+                canvas.style.backgroundImage = '';
+                return;
+            }
+            
+            var img = new Image();
+            img.src = li[0].firstChild.src;
+            $(img).load(function () 
+            {
+                // wait for image to load before setting size
+                canvas.width = img.width;
+                canvas.height = img.height;
+                canvasState.valid = false;
+            });
+            // http://stackoverflow.com/questions/6669228/setting-backgroundimage-style-from-a-filereader
+            canvas.style.backgroundImage = 'url(' + img.src + ')';
+            
+            var rects = li.data("rects");
+            if (selected != null)
+            {
+                selected.children().first().css('border-color', 'rgb(0, 0, 0)');
+                selected.children().first().css('border-width', '1px');
+            }
+            selected = li;
+            selected.children().first().css('border-color', 'rgb(255, 0, 0)');
+            selected.children().first().css('border-width', '2px');
+            
+            canvasState.clearShapes(); // to prevent seeing the previous rects
+            if (rects == null)
+           	{
+                sendData(li);
+           	}
+            else
+            {
+                rectsToCanvas(rects);
+                var meta = li.data("meta");
+                for (var i = 0; i < canvasState.shapes.length; ++i)
+                {
+                    canvasState.shapes[i].metadata = meta[i];
+                }
+            }
+	    }
+	    
+	    function rectsToCanvas(rects)
+	    {
+            canvasState.clearShapes();
+            for (var i = 0; i < rects.length; ++i)
+            {
+                canvasState.addShape(new Shape(rects[i].x, rects[i].y, rects[i].width, rects[i].height, rects[i].id));
+            }
+            updateTagTable(selected); // do this after rects have been added!
+	    }
+	    
+	    function addTagToPanel(event)
+	    {
+	        var sel = canvasState.selection;
+	        if (sel >= 0)
+            {
+	            var val = $('input[name=meta]:checked').attr('value');
+	            if (val !== '')
+                {
+	                var added = canvasState.updateMetadata(sel, val);
+	                
+	                var xmlHttp = new XMLHttpRequest();
+	                var url = "http://localhost:8080/estrips/estrips/comic/" + comicID + "/" + selected.attr('name') + "/" + sel + "/meta";
+	                if (!added)
+	                    url += "/delete";
+	                xmlHttp.open("POST", url, false);
+	                xmlHttp.send(val);
+                }
+            }
+	    }
+	    
+	    function createTag(tag)
+	    {
+	        if (tag === '')
+	            return;
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open("POST", "http://localhost:8080/estrips/estrips/meta", false);
+            xmlHttp.send(tag);
+            updateTagTable(selected);
+	    }
+        
+        function deleteTag(tag)
+        {
+            if (tag === '')
+                return;
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open("POST", "http://localhost:8080/estrips/estrips/meta/delete", false);
+            xmlHttp.send(tag);
+            updateTagTable(selected);
+        }
+	    
+	    function updateTagTable(li) // TODO: li parameter not needed anymore
+	    {
+            $('#tags tr').detach(); // clean table
+            
+            var header = document.createElement('tr');
+            header.setAttribute('class', 'header');
+            header.appendChild(document.createElement('td'));
+            /*var stored = li.data("rects");
+            for (var i = 0; i < stored.length; ++i)
+            {
+                var td = document.createElement('td');
+                td.appendChild(document.createTextNode(i+1));
+                header.appendChild(td);
+            }*/
+
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open( "GET", "http://localhost:8080/estrips/estrips/meta", false );
+            xmlHttp.send( null );
+            
+            var tags = [];
+            var response = jQuery.parseJSON(xmlHttp.responseText);
+            $.each(response, function(index, tag)
+            {
+                tags.push(tag);
+            });
+            tags.sort();
+            tags.unshift('');
+            
+            $('#tags')[0].appendChild(header);
+            //var tags = ['', 'Barabas', 'Lambik', 'Suske', 'Wiske'];
+            for (var i = 0; i < tags.length; ++i)
+            {
+                var tr = document.createElement('tr');
+                
+                var td = document.createElement('td');
+                var radio = document.createElement('input');
+                radio.setAttribute('type', 'radio');
+                radio.setAttribute('name', 'meta');
+                radio.setAttribute('value', tags[i]);
+                td.appendChild(radio);
+                tr.appendChild(td);
+                if (i == 0)
+                {
+                    radio.setAttribute('checked', 'checked');
+                }
+                
+                var tag = document.createElement('td');
+                tag.appendChild(document.createTextNode(tags[i]));
+                tr.appendChild(tag);
+                
+                /*var del = document.createElement('td');
+                var btn = document.createElement('input');
+                btn.setAttribute('type', 'button');
+                btn.setAttribute('value', 'X');
+                btn.setAttribute('onClick', 'if (confirm("Are you sure?")) deleteTag($("#meta_input").val());');
+                del.appendChild(btn);
+                tr.appendChild(del);*/
+                
+                /*for (var j = 0; j < stored.length; ++j)
+                {
+                    var td = document.createElement('td');
+                    var checkbox = document.createElement('input');
+                    checkbox.setAttribute('type', 'checkbox');
+                    td.appendChild(checkbox);
+                    tr.appendChild(td);
+                }*/
+                
+                $('#tags')[0].appendChild(tr);
+            }
+            
+            // TODO: this can be fixed if other elements get inserted above?
+            var tr = document.createElement('tr');
+            var btn = document.createElement('input');
+            btn.setAttribute('type', 'button');
+            btn.setAttribute('value', 'Add');
+            btn.setAttribute('onClick', 'createTag($("#meta_input").val());');
+            var txt = document.createElement('input');
+            txt.setAttribute('type', 'text');
+            txt.setAttribute('id', 'meta_input');
+            var del = document.createElement('input');
+            del.setAttribute('type', 'button');
+            del.setAttribute('value', 'X');
+            del.setAttribute('onClick', 'if (confirm("Are you sure?")) deleteTag($("#meta_input").val());');
+            var td = document.createElement('td');
+            td.appendChild(btn);
+            tr.appendChild(td);
+            td = document.createElement('td');
+            td.appendChild(txt);
+            tr.appendChild(td);
+            td = document.createElement('td');
+            td.appendChild(del);
+            tr.appendChild(td);
+            $('#tags')[0].appendChild(tr);
+	    }
+    
+	    function handleFileSelect(evt) 
+	    {
+	 	  evt.stopPropagation();
+	      evt.preventDefault();
+	  
+	      var files = evt.dataTransfer.files; // FileList object.
+	  
+	      // files is a FileList of File objects. List some properties.
+	      var output = [];
+	      // load files one by one
+	      loadFile(files, 0);
+	    }
+	  
+	    function handleDragOver(evt) 
+	    {
+	      evt.stopPropagation();
+	      evt.preventDefault();
+	      evt.dataTransfer.dropEffect = 'copy'; // Explicitly show this is a copy.
+	    }
+	    
+	    function dataURItoBlob(dataURI) 
+	    {
+	        // http://stackoverflow.com/questions/4998908/convert-data-uri-to-file-then-append-to-formdata
+	        var binary = atob(dataURI.split(',')[1]);
+	        var array = [];
+	        for(var i = 0; i < binary.length; i++) 
+	        {
+	            array.push(binary.charCodeAt(i));
+	        }
+	        return new Blob([new Uint8Array(array)], {type: 'image/jpeg'});
+	    }
+
+        function sendData (li)
+        {
+            // http://stackoverflow.com/questions/5392344/sending-multipart-formdata-with-jquery-ajax
+            var data = new FormData();
+            //data.append('img', dataURItoBlob(li[0].firstChild.src));
+            var img = li[0].firstChild.src.split("/").slice(-1)[0];
+            $.ajax(
+                {
+                    type: 'GET',
+                    url: 'http://localhost:8080/estrips/estrips/img/' + img + "/rects",
+                    contentType: false,
+                    processData: false,
+                    data: data,
+                    success: function(data, textStatus, jqXHR) { success(data, li); },
+                    error: function(jqXHR, textStatus, errorThrown) { console.log(jqXHR); }
+                }
+            );
+        }
+        
+        function sendRect (page, idx, rect)
+        {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open("POST", "http://localhost:8080/estrips/estrips/comic/" + comicID + "/" + page + "/" + idx + "/rect", false);
+            xmlHttp.setRequestHeader('Content-Type', 'application/json');
+            xmlHttp.send(JSON.stringify(rect));
+            return xmlHttp.responseText;
+        }
+        
+        function success (data, li)
+        {
+            var rects = [];
+            $.each(data, function(index, rect)
+            {
+                rect.id = sendRect(selected.attr('name'), index, rect);
+                
+                rects.push(rect);
+            });
+            li.data("rects", rects);
+            rectsToCanvas(rects);
+        }
+        
+        function createEPUB ()
+        {
+            //var data = new FormData();
+            changeSelection(selected); // forces current page to be stored in database
+            var valid = true;
+            $('li.entry').each(function(idx)
+            {
+                var stored = $(this).data("rects");
+                if (stored == null)
+                {
+                    alert('Not all pages have panels!');
+                    valid = false;
+                    return false; // false needed to break out
+                }
+                /*var rects = [];
+                for (var i = 0; i < stored.length; ++i)
+                {
+                    var r = stored[i];
+                    rects.push({'x':r.x, 'y':r.y, 'width':r.w, 'height':r.h})
+                }
+                data.append('rect', JSON.stringify(rects));
+                data.append('img', dataURItoBlob($(this)[0].firstChild.src));*/
+            });
+            if (!valid)
+                return;
+            
+            window.location.href = 'http://localhost:8080/estrips/estrips/comic/' + comicID + "/epub";
+            
+            /*$.ajax(
+            {
+                type: 'POST',
+                url: 'http://localhost:8080/estrips/estrips/EPUB',
+                contentType: false,
+                processData: false,
+                data: data,
+                success: function(data, textStatus, jqXHR) 
+                { 
+                    window.location.href = "http://localhost:8080/estrips/estrips/EPUB/"+data;
+                },
+                error: function(jqXHR, textStatus, errorThrown) { console.log(jqXHR); }
+            });*/
+        }
+        
+        function loadEPUB (id)
+        {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open("GET", "http://localhost:8080/estrips/estrips/comic/" + id, false);
+            xmlHttp.send(null);
+            
+            var comic = jQuery.parseJSON(xmlHttp.responseText);
+            $.each(comic.pages, function(index, page)
+            {
+                var entry = addEntry(page.id, page.img);
+                var rects = [];
+                var pageMetadata = [];
+                $.each(page.panels, function(idx, panel)
+                {
+                    rects.push({x : panel.x, y : panel.y, width : panel.width, height : panel.height, id : panel.id});
+                    var meta = [];
+                    $.each(panel.metadata, function(_, metadata)
+                    {
+                       meta.push(metadata); 
+                    });
+                    pageMetadata.push(meta);
+                });
+                entry.data("rects", rects);
+                entry.data("meta", pageMetadata);
+            });
+
+            comicID = id;
+            $('#comicID').text("Comic ID: " + comicID);
+            finalizePage();
+        }
+    </script>
+</html>

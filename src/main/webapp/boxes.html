@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+    <body onload="test()">
+	    <input type="file" name="img" id="img"/>
+        
+        <br>
+        
+        <canvas id="canvas" width="0" height="0" style="border: 1px solid black;">
+            This text is displayed if your browser does not support HTML5 Canvas.
+        </canvas>
+    </body>
+    
+    <script src="jquery-2.1.0.min.js"></script>
+    <script src="shapes.js"></script>
+    <script>
+        var canvasState; 
+        function test ()
+        {
+            // sendData();
+            var imageLoader = $('#img')[0];
+            imageLoader.addEventListener('change', handleImage, false);
+            canvasState = new CanvasState(document.getElementById('canvas'));
+        }
+        
+        function handleImage (e)
+        {
+        	// http://stackoverflow.com/questions/10906734/how-to-upload-image-into-html5-canvas
+            var canvas = $('#canvas')[0];
+            var ctx = canvas.getContext('2d');
+            var reader = new FileReader();
+            reader.onload = function (event)
+            {
+            	var img = new Image();
+            	img.onload = function ()
+            	{
+            		canvas.width = img.width;
+            		canvas.height = img.height;
+            		// http://stackoverflow.com/questions/6669228/setting-backgroundimage-style-from-a-filereader
+            		canvas.style.backgroundImage = 'url(' + img.src + ')';
+            		
+                    sendData(); // need to do this after canvas resize to make sure the canvas is big enough for the rects
+            	}
+            	img.src = event.target.result;
+            }
+            reader.readAsDataURL(e.target.files[0]);
+            
+        }
+        
+        function sendData ()
+        {
+            // http://stackoverflow.com/questions/5392344/sending-multipart-formdata-with-jquery-ajax
+            var data = new FormData();
+            jQuery.each($('#img')[0].files, function(i, file) { data.append('img', file) });
+            $.ajax(
+                {
+                    type: 'POST',
+                    url: 'http://localhost:8080/estrips/estrips/upload',
+                    contentType: false,
+                    processData: false,
+                    data: data,
+                    success: success,
+                    error: function(jqXHR, textStatus, errorThrown) { console.log(jqXHR); }
+                }
+            );
+        }
+        
+        function success (data, textStatus, jqXHR)
+        {
+        	canvasState.clearShapes();
+        	$.each(data, function(index, rect)
+        	{
+        		canvasState.addShape(new Shape(rect.x, rect.y, rect.width, rect.height));
+        	});
+        }
+    </script>
+</html>

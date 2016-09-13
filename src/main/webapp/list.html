@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+    <body onload="start()">
+        <a href="dnd.html">New Comic</a>
+        <form enctype="multipart/form-data" action="estrips/comic/epub" method="POST">        
+            <p>Upload EPUB3: <input id="upload_epub" name="upload_epub" type="file" value="TEST" />
+            <input type="submit" /></p>
+        </form>
+        <table id="comics" >
+            <tr>
+                <td>Open</td>
+                <td>ID</td>
+                <td>ISBN</td>
+                <td>Title</td>
+                <td>Author</td>
+                <td>Delete</td>
+            </tr>
+        </table>
+    </body>
+    
+    <script src="jquery-2.1.0.min.js"></script>
+    <script src="comic.js"></script>
+    <script>
+        function start ()
+        {
+            var comics = jQuery.parseJSON(Comic.listComics());
+            for (var i = 0; i < comics.length; ++i)
+            {
+                var row = $("<tr />");
+                row.append($("<td />").append($("<input />", {type: "button", value:"Open", onclick:'window.location.href="dnd.html?comic=' + comics[i].id + '"'})));
+                row.append($("<td />").append(comics[i].id));
+                row.append($("<td />").append(comics[i].metadata['dc:identifier']));
+                row.append($("<td />").append(comics[i].metadata['dc:title']));
+                row.append($("<td />").append(comics[i].metadata['dc:creator']));
+                row.append($("<td />").append($("<input />", {type: "button", value:"X", onclick:'if (confirm("Are you sure?")) { new Comic(' + comics[i].id + ').destroy(); location.reload(); }'})));
+                
+                $("#comics").append(row);
+            }
+        }
+    </script>
+</html>
