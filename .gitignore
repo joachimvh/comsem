@@ -15,7 +15,3 @@ cascade.xml
 *.docx
 *.iml
 *.csv
-
-opencv-247.jar
-opencv_java247.dll
-libopencv_java249.so
