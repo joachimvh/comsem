@@ -1,10 +1,7 @@
 package test.jersey;
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.sql.*;
+import java.util.Enumeration;
 
 import javax.servlet.ServletContextEvent;
 import javax.servlet.ServletContextListener;
@@ -45,8 +42,27 @@ public class ServletContextClass implements ServletContextListener
     }
     
     @Override
-    public void contextDestroyed(ServletContextEvent event) 
-    {
+    public final void contextDestroyed(ServletContextEvent sce) {
+        // ... First close any background tasks which may be using the DB ...
+        // ... Then close any DB connection pools ...
+
+        // Now deregister JDBC drivers in this context's ClassLoader:
+        // Get the webapp's ClassLoader
+        ClassLoader cl = Thread.currentThread().getContextClassLoader();
+        // Loop through all drivers
+        Enumeration<Driver> drivers = DriverManager.getDrivers();
+        while (drivers.hasMoreElements()) {
+            Driver driver = drivers.nextElement();
+            if (driver.getClass().getClassLoader() == cl) {
+                // This driver was registered by the webapp's ClassLoader, so deregister it:
+                try {
+                    DriverManager.deregisterDriver(driver);
+                } catch (SQLException ex) {
+                }
+            } else {
+                // driver was not registered by the webapp's ClassLoader and may be in use elsewhere
+            }
+        }
     }
 
 }
