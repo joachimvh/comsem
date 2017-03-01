@@ -42,6 +42,7 @@ public class ServletContextClass implements ServletContextListener
     }
     
     @Override
+    // http://stackoverflow.com/questions/3320400/to-prevent-a-memory-leak-the-jdbc-driver-has-been-forcibly-unregistered
     public final void contextDestroyed(ServletContextEvent sce) {
         // ... First close any background tasks which may be using the DB ...
         // ... Then close any DB connection pools ...
