@@ -4,23 +4,25 @@
     <style>
     #drop_zone
     {
-	     border: 2px dashed #BBB;
-	     border-radius: 5px;
-	     padding: 25px;
-	     text-align: center;
-	     color: #BBB;
+	    border: 2px dashed #BBB;
+	    border-radius: 5px;
+        padding-top: 25px;
+	    text-align: center;
+	    color: #BBB;
+        resize: vertical;
+        overflow: auto;
+        height: 150px;
 
-	     font-size: 18px;
-	     font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif;
-	     line-height: 1.5;
+	    font-size: 18px;
+	    font-family: 'Helvetica Neue',Helvetica,Arial,sans-serif;
+	    line-height: 1.5;
 	}
     
     #list
     {
         list-style-type: none;
-        height: 110px;
-        white-space: nowrap;
-        overflow-x: auto;
+        /*height: 110px;*/
+        padding: 0;
         overflow-y: auto;
     }
     
@@ -31,9 +33,9 @@
 	
 	.thumb 
 	{
-	     height: 75px;
-	     border: 1px solid #000;
-	     margin: 10px 5px 0px 0px;
+	    height: 75px;
+	    border: 1px solid #000;
+	    margin: 10px 5px 0px 0px;
 	}
 	
     #canvases
