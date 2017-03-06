@@ -185,28 +185,7 @@ function CanvasState(canvas)
     {
         if (myState.resizeDrag)
         {
-            var mouse = myState.getMouse(e);
-            // time ro resize!
-            var mySel = myState.shapes[myState.selection];
-            var oldx = mySel.x;
-            var oldy = mySel.y;
-            var mx = mouse.x;
-            var my = mouse.y;
-
-            // 0 1 2
-            // 3   4
-            // 5 6 7
-            var idx = myState.expectResize + Math.floor(myState.expectResize/4);
-            if (idx % 3 == 0) mySel.x = mx;
-            if (idx < 3)      mySel.y = my;
-            
-            if (idx % 3 == 0) mySel.w += oldx - mx;
-            if (idx % 3 == 2) mySel.w = mx - oldx;
-            
-            if (idx < 3)  mySel.h += oldy - my;
-            if (idx >= 6) mySel.h = my - oldy;
-            mySel.updateBoxes();
-            myState.valid = false;
+            myState.resizeShape(myState.getMouse(e));
         }
         else
         {
@@ -271,6 +250,24 @@ function CanvasState(canvas)
     {
         if (myState.resizeDrag)
         {
+            var mouse = myState.getMouse(e);
+            if (mouse.x < 0) mouse.x = 0;
+            else if (mouse.x > myState.canvas.width) mouse.x = myState.canvas.width;
+            if (mouse.y < 0) mouse.y = 0;
+            else if (mouse.y > myState.canvas.height) mouse.y = myState.canvas.height;
+
+            myState.resizeShape(mouse);
+        }
+        else
+        {
+            myState.selection = -1; // remove selection
+            myState.valid = false;
+        }
+    });
+    canvas.addEventListener('mouseover', function(e)
+    {
+        if (myState.resizeDrag && (e.buttons%2) !== 1)
+        {
             myState.resizeDrag = false;
             myState.valid = false;
         }
@@ -306,6 +303,31 @@ function CanvasState(canvas)
         myState.draw();
     }, myState.interval);
 }
+
+CanvasState.prototype.resizeShape = function (mouse)
+{
+    // time ro resize!
+    var mySel = this.shapes[this.selection];
+    var oldx = mySel.x;
+    var oldy = mySel.y;
+    var mx = mouse.x;
+    var my = mouse.y;
+
+    // 0 1 2
+    // 3   4
+    // 5 6 7
+    var idx = this.expectResize + Math.floor(this.expectResize/4);
+    if (idx % 3 == 0) mySel.x = mx;
+    if (idx < 3)      mySel.y = my;
+
+    if (idx % 3 == 0) mySel.w += oldx - mx;
+    if (idx % 3 == 2) mySel.w = mx - oldx;
+
+    if (idx < 3)  mySel.h += oldy - my;
+    if (idx >= 6) mySel.h = my - oldy;
+    mySel.updateBoxes();
+    this.valid = false;
+};
 
 CanvasState.prototype.addShape = function(shape)
 {
