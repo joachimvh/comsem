@@ -1,6 +1,7 @@
 
 
 var COMIC_ROOT = "estrips/";
+var DEMO_PROTECTION_ID = -1;
 
 function isInput (v)
 {
@@ -9,6 +10,8 @@ function isInput (v)
 
 function sendComicData(protocol, path, data, contentType, callback)
 {
+    if ((DEMO_PROTECTION_ID === 1 || DEMO_PROTECTION_ID === '1') && protocol !== 'GET')
+        return;
     var async = isInput(callback);
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.open(protocol, COMIC_ROOT + path, async);
@@ -78,6 +81,7 @@ Metadata.enrich = function(text, callback)
 //-------------- COMIC --------------------
 function Comic (id)
 {
+    DEMO_PROTECTION_ID = id;
     this.pages = [];
     this.title = "";
     this.metadata = {};
