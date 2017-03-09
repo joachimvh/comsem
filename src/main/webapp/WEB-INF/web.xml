@@ -35,4 +35,8 @@
     <servlet-name>Jersey REST Service</servlet-name>
     <url-pattern>/estrips/*</url-pattern>
   </servlet-mapping>
+
+  <welcome-file-list>
+    <welcome-file>dnd.html</welcome-file>
+  </welcome-file-list>
 </web-app>
