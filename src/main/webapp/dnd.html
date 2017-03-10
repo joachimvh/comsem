@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html>
+<head>
     <!-- http://www.html5rocks.com/en/tutorials/file/dndfiles/ -->
     <style>
     #drop_zone
@@ -87,8 +88,10 @@
         text-align: center;
     }*/
     </style>
+	<style src="theme.min.css"/>
+</head>
 
-	<body onload="start()">
+	<body class="container" style="padding-top: 16px" onload="start()">
         <p style="float:right;"><img height=30px src="Logo_IDLab_TRANS.png" style="padding: 0px 20px" /><img height=30px src="Imec_ColourPositive.png" style="padding: 0px 20px" /></p>
         <p><a href="list.html">List of comics</a></p>
         <button onclick="createEPUB()">EPUB3</button>
@@ -160,6 +163,7 @@
     <script src="jquery-ui.min.js"></script>
     <script src="jquery.ui.sortable.js"></script>
     <script src="jquery.tinysort.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
     <script src="shapes.js"></script>
     <script src="comic.js"></script>
     <script>
