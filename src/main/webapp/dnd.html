@@ -94,48 +94,53 @@
 	<body class="container" style="padding-top: 16px" onload="start()">
         <p style="float:right;"><img height=30px src="Logo_IDLab_TRANS.png" style="padding: 0px 20px" /><img height=30px src="Imec_ColourPositive.png" style="padding: 0px 20px" /></p>
         <p><a href="list.html">List of comics</a></p>
-        <button onclick="createEPUB()">EPUB3</button>
+        <button class="btn btn-primary" onclick="createEPUB()">Create EPUB3</button>
         <p id="comicID">Comic ID:</p>
         <!-- div id="load_">
             <input type="text" id="load_text" size="5"/>
             <input type="button" id="load_btn" value="Load comic" onclick="loadEPUB($('#load_text').val());" />
         </div -->
-        <table>
-            <tr>
-                <td>ISBN:</td><td><input type="text" class="comic_metadata" id="meta_isbn" name="dc:identifier" onkeydown="typingCheck()"/></td>
-                <td>Title:</td><td><input type="text" class="comic_metadata" id="meta_title" name="dc:title" onkeydown="typingCheck()"/></td>
-                <td>Author:</td><td><input type="text" class="comic_metadata" id="meta_author" name="dc:creator" onkeydown="typingCheck()"/></td>
-                <td>Language:</td><td><input type="text" class="comic_metadata" id="meta_language" name="dc:language" onkeydown="typingCheck()" value="nl"/></td>
-            </tr>
-        </table>
-        <table>
-            <tr>
-                <td>Description:</td><td><textarea class="comic_metadata" id="meta_description" name="dc:description" style="width: 600px; height: 100px;" onkeydown="typingCheck()"></textarea></td>
-            </tr>
-            <tr>
-                <td><input type="button" value="Enrich" onclick="enrich();"/></td>
-            </tr>
-        </table>
+		<h3>General metadata</h3>
+		<div class="row">
+			<div class="col-md-3 form-group">
+				<label>ISBN:</label> <input type="text" class="comic_metadata form-control" id="meta_isbn" name="dc:identifier" onkeydown="typingCheck()"/>
+			</div>
+			<div class="col-md-3 form-group">
+                <label>Title:</label> <input type="text" class="comic_metadata form-control" id="meta_title" name="dc:title" onkeydown="typingCheck()"/>
+			</div>
+			<div class="col-md-3 form-group">
+                <label>Author:</label><input type="text" class="comic_metadata form-control" id="meta_author" name="dc:creator" onkeydown="typingCheck()"/>
+			</div>
+			<div class="col-md-3 form-group">
+                <label>Language:</label><input type="text" class="comic_metadata form-control" id="meta_language" name="dc:language" onkeydown="typingCheck()" value="nl"/>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-md-12 form-group">
+                <label>Description:</label><textarea class="comic_metadata form-control" id="meta_description" name="dc:description" style="width: 100%; heigth: 100px; resize: vertical" onkeydown="typingCheck()"></textarea>
+			</div>
+        <h3>Custom metadata</h3>
         <table>
             <tr>
                 <td>Key</td>
                 <td>Value</td>
             </tr>
             <tr id="add_custom_metadata">
-                <td><input type="text" id="meta_key" /></td>
-                <td><input type="text" id="meta_value" /></td>
-                <td><input type="button" value="Add" onclick="addComicMetadata(); " /></td>
+                <td><input class="form-control" type="text" id="meta_key" /></td>
+                <td><input class="form-control" type="text" id="meta_value" /></td>
+                <td><input class="btn btn-primary" type="button" value="Add to comic" onclick="addComicMetadata(); " /></td>
             </tr>
         </table>
+		<h3>Comic panels</h3>
 		<div id="drop_zone">
 			Drop files here
 			<ul id="list"></ul>
 		</div>
 		<br />
         <div style="text-align: center;">
-            <input type="button" value="Panels" onclick="$('.toggle').not('#canvases').hide(); $('#canvases').show();"/>
-            <input type="button" value="Metadata Lists" onclick="$('.toggle').not('#metadata_lists').hide(); $('#metadata_lists').show(); renderMetadataLists();"/>
-            <input type="button" value="Metadata" onclick="$('.toggle').not('#panels_metadata').hide(); $('#panels_metadata').show(); renderPanelsWithMetadata();"/>
+            <input class="btn btn-default" type="button" value="Panels" onclick="$('.toggle').not('#canvases').hide(); $('#canvases').show();"/>
+            <input class="btn btn-default" type="button" value="Metadata Lists" onclick="$('.toggle').not('#metadata_lists').hide(); $('#metadata_lists').show(); renderMetadataLists();"/>
+            <input class="btn btn-default" type="button" value="Metadata" onclick="$('.toggle').not('#panels_metadata').hide(); $('#panels_metadata').show(); renderPanelsWithMetadata();"/>
             <!-- input type="button" value="Actions" onclick="$('.toggle').not('#actions').hide(); $('#actions').show(); renderPanelsWithActions();"/ -->
         </div>
         <div id="canvases" class="toggle"> <!-- onclick="addTagToPanel()" -->
