@@ -57,7 +57,7 @@
                 row.append($("<td />").append(comics[i].metadata['dc:identifier']));
                 row.append($("<td />").append(comics[i].metadata['dc:title']));
                 row.append($("<td />").append(comics[i].metadata['dc:creator']));
-                row.append($("<td />").append($("<input />", {class: "btn btn-default", type: "button", value:"X", onclick:'if (confirm("Are you sure?")) { new Comic(' + comics[i].id + ').destroy(); location.reload(); }'})));
+                row.append($("<td />").append($("<input />", {'class': 'btn btn-danger', type: "button", value:"X", onclick:'if (confirm("Are you sure?")) { new Comic(' + comics[i].id + ').destroy(); location.reload(); }'})));
                 
                 $("#comics").append(row);
             }
