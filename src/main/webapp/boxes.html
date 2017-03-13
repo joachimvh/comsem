@@ -1,7 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
-    <body onload="test()">
-	    <input type="file" name="img" id="img"/>
+<head>
+<link rel="stylesheet" type="text/css" href="theme.min.css">
+<style>
+.btn-file {
+    position: relative;
+    overflow: hidden;
+}
+.btn-file input[type=file] {
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-width: 100%;
+    min-height: 100%;
+    font-size: 100px;
+    text-align: right;
+    filter: alpha(opacity=0);
+    opacity: 0;
+    outline: none;
+    background: white;
+    cursor: inherit;
+    display: block;
+}
+</style>
+</head>
+    <body class="container" onload="test()">
+	    <label class="btn btn-default btn-file">Browse...<input style="display: none;" type="file" name="img" id="img"/></label
         
         <br>
         
@@ -12,6 +36,7 @@
     
     <script src="jquery-2.1.0.min.js"></script>
     <script src="shapes.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
     <script>
         var canvasState; 
         function test ()

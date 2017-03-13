@@ -1,12 +1,36 @@
 <!DOCTYPE html>
 <html>
-    <body onload="start()">
+<head>
+<link rel="stylesheet" type="text/css" href="theme.min.css">
+<style>
+.btn-file {
+    position: relative;
+    overflow: hidden;
+}
+.btn-file input[type=file] {
+    position: absolute;
+    top: 0;
+    right: 0;
+    min-width: 100%;
+    min-height: 100%;
+    font-size: 100px;
+    text-align: right;
+    filter: alpha(opacity=0);
+    opacity: 0;
+    outline: none;
+    background: white;
+    cursor: inherit;
+    display: block;
+}
+</style>
+</head>
+    <body class="container" onload="start()">
         <a href="dnd.html">New Comic</a>
-        <form enctype="multipart/form-data" action="estrips/comic/epub" method="POST">        
-            <p>Upload EPUB3: <input id="upload_epub" name="upload_epub" type="file" value="TEST" />
-            <input type="submit" /></p>
+        <form class="form-inline" enctype="multipart/form-data" action="estrips/comic/epub" method="POST">        
+            <p class="form-group">Upload EPUB3: <label class="btn btn-default btn-file">Browse...<input style="display: none;" id="upload_epub" name="upload_epub" type="file" value="TEST" /></label>
+            <input class="btn btn-primary" type="submit" /></p>
         </form>
-        <table id="comics" >
+        <table class="table" id="comics" >
             <tr>
                 <td>Open</td>
                 <td>ID</td>
@@ -20,6 +44,7 @@
     
     <script src="jquery-2.1.0.min.js"></script>
     <script src="comic.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
     <script>
         function start ()
         {
@@ -27,7 +52,7 @@
             for (var i = 0; i < comics.length; ++i)
             {
                 var row = $("<tr />");
-                row.append($("<td />").append($("<input />", {type: "button", value:"Open", onclick:'window.location.href="dnd.html?comic=' + comics[i].id + '"'})));
+                row.append($("<td />").append($("<input />", {class: "btn btn-default", type: "button", value:"Open", onclick:'window.location.href="dnd.html?comic=' + comics[i].id + '"'})));
                 row.append($("<td />").append(comics[i].id));
                 row.append($("<td />").append(comics[i].metadata['dc:identifier']));
                 row.append($("<td />").append(comics[i].metadata['dc:title']));
