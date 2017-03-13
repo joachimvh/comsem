@@ -65,10 +65,12 @@
 
     .metadata_table
     {
-        /*position: relative;*/
-        border: 1px solid #000;
         display: inline-block;
-        vertical-align: top;
+		vertical-align: top;
+		background: #efefef;
+		margin: 8px;
+		padding: 16px;
+		border-radius: 16px;
     }
 
     .crop-wrapper
@@ -405,7 +407,7 @@
     	            var row = $("<tr />", {'class':'custom_metadata'});
     	            row.append($("<td />").append(key));
                     row.append($("<td />").append(val));
-                    row.append($("<td />").append($("<input />", {type:"button", value:"X", onclick:'comic.deleteMetadata("' + addslashes(key) + '", "' + addslashes(val) + '"); updateComicMetadataTable();'})));
+                    row.append($("<td />").append($("<input />", {'class':"btn btn-default", type:"button", value:"X", onclick:'comic.deleteMetadata("' + addslashes(key) + '", "' + addslashes(val) + '"); updateComicMetadataTable();'})));
                     row.insertBefore(final_row);
 	            }
             }
@@ -592,7 +594,7 @@
                 var textTable = $("<table />");
                 panel.texts.forEach(function (textObj, idx) {
                     var textRow = $('<tr />');
-                    textRow.append($('<td />').append($('<input/>', {type: 'button', value:'X', onClick:'deletePanelText(' + i +  ', ' + idx + ')'})));
+                    textRow.append($('<td />').append($('<input/>', {'class': 'btn btn-danger', type: 'button', value:'X', onClick:'deletePanelText(' + i +  ', ' + idx + ')'})));
                     textRow.append($('<td />').append(textObj.lang && textObj.lang.length > 0 ? '(' + textObj.lang + ')' : ''));
                     textRow.append($('<td />').append('(' + textObj.predicate + ')'));
                     textRow.append($('<td />').append(textObj.text));
@@ -600,7 +602,7 @@
                 });
                 
                 var textRow = $('<tr />');
-                textRow.append($('<td />').append($('<input/>', {type: 'button', value:'Add', onClick:'addPanelText(' + i + ')'})));
+                textRow.append($('<td />').append($('<input/>', {'class': "btn btn-default", type: 'button', value:'Add', onClick:'addPanelText(' + i + ')'})));
                 var langSelect = $('<select/>', {id: 'text_lang_'+i});
                 langs.forEach(function (lang) {
                     langSelect.append($('<option>' + lang + '</option>', {value: lang}));
@@ -785,7 +787,7 @@
             for (var i = 0; i < vals.length; ++i)
             {
                 var tr = $("<tr />");
-                var cpyBtn = $("<input />", {type: 'button', value: 'X', onClick: 'if (confirm("Are you sure?")) ' + deleteFnName + '("' + vals[i] + '");'});
+                var cpyBtn = $("<input />", {'class':"btn btn-default", type: 'button', value: 'X', onClick: 'if (confirm("Are you sure?")) ' + deleteFnName + '("' + vals[i] + '");'});
                 
                 tr.append($("<td />").append(cpyBtn));
                 tr.append($("<td />").append(vals[i]));
@@ -794,8 +796,8 @@
             }
             
             var tr = $("<tr />");
-            var btn = $("<input />", {type: 'button', value: 'Add', onClick: createFnName + '($("#' + inputID + '").val());'});
-            var txt = $("<input />", {type: 'text', id: inputID, style: 'width: 95%;'});
+            var btn = $("<input />", {'class':"btn btn-default", type: 'button', value: 'Add', onClick: createFnName + '($("#' + inputID + '").val());'});
+            var txt = $("<input />", {'class':"form-control", type: 'text', id: inputID, style: 'width: 95%;'});
             
             tr.append($("<td />").append(btn));
             tr.append($("<td />").append(txt));
