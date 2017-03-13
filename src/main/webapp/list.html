@@ -34,9 +34,9 @@
             <tr>
                 <td></td>
                 <td>ID</td>
-                <td>ISBN</td>
-                <td>Title</td>
-                <td>Author</td>
+                <td style="width: 20%;">ISBN</td>
+                <td style="width: 40%;">Title</td>
+                <td style="width: 40%;">Author</td>
                 <td>Delete</td>
             </tr>
         </table>
@@ -57,7 +57,7 @@
                 row.append($("<td />").append(comics[i].metadata['dc:identifier']));
                 row.append($("<td />").append(comics[i].metadata['dc:title']));
                 row.append($("<td />").append(comics[i].metadata['dc:creator']));
-                row.append($("<td />").append($("<input />", {type: "button", value:"X", onclick:'if (confirm("Are you sure?")) { new Comic(' + comics[i].id + ').destroy(); location.reload(); }'})));
+                row.append($("<td />").append($("<input />", {class: "btn btn-default", type: "button", value:"X", onclick:'if (confirm("Are you sure?")) { new Comic(' + comics[i].id + ').destroy(); location.reload(); }'})));
                 
                 $("#comics").append(row);
             }
